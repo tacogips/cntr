@@ -1,0 +1,24 @@
+[package]
+name = "wcounter"
+license="MIT"
+description="Give the word and count the appearance"
+version = "0.0.1"
+repository = "https://github.com/tacogips/wcounter"
+authors = ["tacogips <me@tacogips.me>"]
+edition = "2018"
+keywords = [
+	"fzf",
+	"zsh",
+]
+include = [
+	"src/**/*",
+	"Cargo.toml",
+	"README.md"
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "3.0.0-beta.1"
+serde_json = "1.0.53"
+serde = { version = "1.0.110", features= ["derive"]}

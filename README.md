@@ -3,6 +3,14 @@ Give the word and count the appearance.
 
 The first rust project of mine.
 
+
+##  Install
+```
+cargo install wcounter
+```
+
+##  Usage
+
 ```
 > wcounter -dest-file="path/to/file" add some_word
 > wcounter -dest-file="path/to/file" show

@@ -14,13 +14,13 @@ struct Opts {
     subcmd: SubCommand,
 }
 
-struct SencenceDataFile<'a> {
-    file_path: &'a str,
+struct SencenceDataFile {
+    file_path: String,
     sentence_presence: SentenceCountsData,
 }
 
-impl<'a> SencenceDataFile<'a> {
-    fn load_or_new(file_path: &'a String) -> SencenceDataFile<'a> {
+impl SencenceDataFile {
+    fn load_or_new(file_path: &String) -> SencenceDataFile {
         let dest_file = File::open(file_path);
 
         let sentence_presence = match dest_file {
@@ -35,7 +35,7 @@ impl<'a> SencenceDataFile<'a> {
         };
 
         SencenceDataFile {
-            file_path: file_path.as_str(),
+            file_path: file_path.clone(),
             sentence_presence,
         }
     }
@@ -45,7 +45,7 @@ impl<'a> SencenceDataFile<'a> {
             .read(true)
             .write(true)
             .create(true)
-            .open(self.file_path)
+            .open(&self.file_path)
             .unwrap();
 
         serde_json::to_writer(f, &self.sentence_presence)

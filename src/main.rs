@@ -1,6 +1,8 @@
 use clap::Clap;
+use raw_sync::locks::{LockInit, Mutex};
 use serde::{Deserialize, Serialize};
 use serde_json;
+use shared_memory::{ShmemConf, ShmemError};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::iter::Iterator;
@@ -117,12 +119,34 @@ fn show(show_opt: Show, dest_file: &mut SencenceDataFile) {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
 
     let dest_file = &mut SencenceDataFile::load_or_new(&opts.dest_file);
+    let shared_mem_file_link_path = opts.dest_file + ".shmem";
+    let shmem = match ShmemConf::new()
+        .size(128)
+        .flink(&shared_mem_file_link_path)
+        .create()
+    {
+        Ok(m) => m,
+        Err(ShmemError::LinkExists) => ShmemConf::new().flink(&shared_mem_file_link_path).open()?,
+        Err(e) => return Err(Box::new(e)),
+    };
+    let base_ptr = shmem.as_ptr();
+    let data = Mutex::size_of(Some(base_ptr));
+    let mutex = if shmem.is_owner() {
+        let (mutex, _) = unsafe { Mutex::new(base_ptr, base_ptr.add(data))? };
+        mutex
+    } else {
+        let (mutex, _) = unsafe { Mutex::from_existing(base_ptr, base_ptr.add(data))? };
+        mutex
+    };
+    mutex.lock()?;
+
     match opts.subcmd {
         SubCommand::Add(add_opt) => add(add_opt, dest_file),
         SubCommand::Show(show_opt) => show(show_opt, dest_file),
     }
+    Ok(())
 }

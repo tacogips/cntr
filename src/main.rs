@@ -8,7 +8,7 @@ use std::fs::{File, OpenOptions};
 use std::iter::Iterator;
 
 #[derive(Clap, Debug)]
-#[clap(version = "0.1.0", author = "tacogips")]
+#[clap(version = "0.2.0", author = "tacogips")]
 struct Opts {
     #[clap(short, long)]
     dest_file: String,

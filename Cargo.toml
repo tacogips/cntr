@@ -2,7 +2,7 @@
 name = "wcounter"
 license="MIT"
 description="Give the word and count the appearance"
-version = "0.0.2"
+version = "0.2.1"
 repository = "https://github.com/tacogips/wcounter"
 authors = ["tacogips <me@tacogips.me>"]
 edition = "2018"

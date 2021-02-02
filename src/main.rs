@@ -1,11 +1,11 @@
+use anyhow::{anyhow, Error, Result};
 use clap::Clap;
-use raw_sync::locks::{LockInit, Mutex};
+use fslock::LockFile;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use shared_memory::{ShmemConf, ShmemError};
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
-use std::iter::Iterator;
+use std::fs::OpenOptions;
+use std::io::Read;
 
 #[derive(Clap, Debug)]
 #[clap(version = "0.2.0", author = "tacogips")]
@@ -16,45 +16,6 @@ struct Opts {
     subcmd: SubCommand,
 }
 
-struct SencenceDataFile {
-    file_path: String,
-    sentence_presence: SentenceCountsData,
-}
-
-impl SencenceDataFile {
-    fn load_or_new(file_path: &String) -> SencenceDataFile {
-        let dest_file = File::open(file_path);
-
-        let sentence_presence = match dest_file {
-            Ok(file) => {
-                let counts_file: serde_json::Result<SentenceCountsData> =
-                    serde_json::from_reader(file);
-                counts_file.unwrap_or_else(|e| panic!("parse dest file error {}", e))
-            }
-            Err(_) => SentenceCountsData {
-                counts: HashMap::new(),
-            },
-        };
-
-        SencenceDataFile {
-            file_path: file_path.clone(),
-            sentence_presence,
-        }
-    }
-
-    fn write(&mut self) {
-        let f = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&self.file_path)
-            .unwrap();
-
-        serde_json::to_writer(f, &self.sentence_presence)
-            .unwrap_or_else(|e| panic!("failed to write file {} {}", self.file_path, e));
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct SentenceCountsData {
     #[serde(flatten)]
@@ -62,19 +23,48 @@ struct SentenceCountsData {
 }
 
 impl SentenceCountsData {
+    fn new() -> SentenceCountsData {
+        Self {
+            counts: HashMap::new(),
+        }
+    }
+    fn load(sentences_file_path: &str) -> Result<SentenceCountsData> {
+        let mut sentence_sentence_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(sentences_file_path)?;
+
+        let mut str_contents = String::new();
+        sentence_sentence_file.read_to_string(&mut str_contents)?;
+
+        let sentence_counts_data: serde_json::Result<SentenceCountsData> =
+            serde_json::from_str(&str_contents);
+        sentence_counts_data.or_else(|_| {
+            if str_contents.is_empty() {
+                Ok(Self::new())
+            } else {
+                Err(anyhow!(
+                    "{} is invalid sentence counter file",
+                    sentences_file_path
+                ))
+            }
+        })
+    }
+
     fn add_sentence(&mut self, sentence: String) {
         *self.counts.entry(sentence).or_insert(0) += 1;
     }
 
     fn sorted_vec(&self, rev: bool) -> Vec<(&String, &i32)> {
-        let mut a: Vec<(&String, &i32)> = self.counts.iter().collect();
+        let mut result: Vec<(&String, &i32)> = self.counts.iter().collect();
 
         if rev {
-            a.sort_by(|lhs, rhs| rhs.1.cmp(&lhs.1));
+            result.sort_by(|lhs, rhs| rhs.1.cmp(&lhs.1));
         } else {
-            a.sort_by(|lhs, rhs| lhs.1.cmp(&rhs.1));
+            result.sort_by(|lhs, rhs| lhs.1.cmp(&rhs.1));
         }
-        a
+        result
     }
 }
 
@@ -104,49 +94,37 @@ struct Show {
     verbose: bool,
 }
 
-fn add(add_opt: Add, dest_file: &mut SencenceDataFile) {
-    dest_file.sentence_presence.add_sentence(add_opt.sentence);
-    dest_file.write()
+fn add(add_opt: Add, data: &mut SentenceCountsData, dest_file_path: &str) -> Result<()> {
+    let dest_sentence_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(dest_file_path)?;
+
+    data.add_sentence(add_opt.sentence);
+    serde_json::to_writer(dest_sentence_file, data).map_err(Error::msg)
 }
 
-fn show(show_opt: Show, dest_file: &mut SencenceDataFile) {
-    for (each_word, n) in dest_file.sentence_presence.sorted_vec(show_opt.reverse) {
+fn show(show_opt: Show, data: &SentenceCountsData) -> Result<()> {
+    for (each_word, n) in data.sorted_vec(show_opt.reverse) {
         if show_opt.verbose {
             println!("{} {}", each_word, n);
         } else {
             println!("{}", each_word);
         }
     }
+    Ok(())
 }
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+//
+fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
-    let dest_file = &mut SencenceDataFile::load_or_new(&opts.dest_file);
-    let shared_mem_file_link_path = opts.dest_file + ".shmem";
-    let shmem = match ShmemConf::new()
-        .size(128)
-        .flink(&shared_mem_file_link_path)
-        .create()
-    {
-        Ok(m) => m,
-        Err(ShmemError::LinkExists) => ShmemConf::new().flink(&shared_mem_file_link_path).open()?,
-        Err(e) => return Err(Box::new(e)),
-    };
-    let base_ptr = shmem.as_ptr();
-    let data = Mutex::size_of(Some(base_ptr));
-    let mutex = if shmem.is_owner() {
-        let (mutex, _) = unsafe { Mutex::new(base_ptr, base_ptr.add(data))? };
-        mutex
-    } else {
-        let (mutex, _) = unsafe { Mutex::from_existing(base_ptr, base_ptr.add(data))? };
-        mutex
-    };
-    mutex.lock()?;
+    let lock_file_path = format!("{}.lock", opts.dest_file);
+    let mut _locked_dest_file = LockFile::open(&lock_file_path)?;
+
+    let mut sentence_data = SentenceCountsData::load(&opts.dest_file)?;
 
     match opts.subcmd {
-        SubCommand::Add(add_opt) => add(add_opt, dest_file),
-        SubCommand::Show(show_opt) => show(show_opt, dest_file),
+        SubCommand::Add(add_opt) => add(add_opt, &mut sentence_data, &opts.dest_file),
+        SubCommand::Show(show_opt) => show(show_opt, &mut sentence_data),
     }
-    Ok(())
 }

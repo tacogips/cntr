@@ -12,13 +12,12 @@ cargo install wcounter
 ##  Usage
 
 ```
-> wcounter -dest-file="path/to/file" add some_word
-> wcounter -dest-file="path/to/file" show
+> wcounter --dest-file="path/to/file" add some_word
+> wcounter --dest-file="path/to/file" show
 
 some_word
 ...
 ```
-
 
 ### Integrated with Zsh and FZF
 Inspired by [the entry](http://blog.naichilab.com/entry/zsh-percol)
@@ -40,3 +39,11 @@ function fd(){
 
 
 ```
+
+### File locking
+
+To avoid conflict of the output file by written simultaneously by multiple process, wcounter uses [fslock](https://docs.rs/fslock/0.1.6/fslock/) as file locking.
+
+The lock file will be created at `{dest_file_path}.lock`, and will reused by another process, so the lock file will not deleted.
+
+

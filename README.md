@@ -11,10 +11,26 @@ cargo install wcounter
 
 ##  Usage
 
+Add the words to wcounter, And It show the word list in order of appearances.
+
 ```
 > wcounter --dest-file="path/to/file" add some_word
+> wcounter --dest-file="path/to/file" add some_word2
+> wcounter --dest-file="path/to/file" add some_word3
+> wcounter --dest-file="path/to/file" add some_word2
+
+# shows by ascending
 > wcounter --dest-file="path/to/file" show
 
+some_word
+some_word3
+some_word2
+
+# shows by descending
+> wcounter --dest-file="path/to/file" show --reverse
+
+some_word2
+some_word3
 some_word
 ...
 ```
@@ -40,10 +56,8 @@ function fd(){
 
 ```
 
-### File locking
 
-To avoid conflict of the output file by written simultaneously by multiple process, wcounter uses [fslock](https://docs.rs/fslock/0.1.6/fslock/) as file locking.
+### File Locking
 
-The lock file will be created at `{dest_file_path}.lock`, and will reused by another process, so the lock file will not deleted.
-
+To avoid conflict of the output file by written simultaneously by multiple process, wcounter uses [cluFlock](https://crates.io/crates/cluFlock).The lock file will be created at `{dest_file_path}.lock`, and will be reused by another process, so the lock file not deleted automatically.
 

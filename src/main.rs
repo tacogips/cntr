@@ -1,14 +1,14 @@
 use anyhow::{anyhow, Error, Result};
 use clap::Clap;
-use fslock::LockFile;
+use cluFlock::ToFlock;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Read;
 
 #[derive(Clap, Debug)]
-#[clap(version = "0.2.3", author = "tacogips")]
+#[clap(version = "0.2.4", author = "tacogips")]
 struct Opts {
     #[clap(short, long)]
     dest_file: String,
@@ -119,7 +119,9 @@ fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     let lock_file_path = format!("{}.lock", opts.dest_file);
-    let mut _locked_dest_file = LockFile::open(&lock_file_path)?;
+    let mut _locked_dest_file = File::create(&lock_file_path)?
+        .wait_exclusive_lock()
+        .map_err(|_| anyhow!("failed to get lock {}", lock_file_path))?;
 
     let mut sentence_data = SentenceCountsData::load(&opts.dest_file)?;
 

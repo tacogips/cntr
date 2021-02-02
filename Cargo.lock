@@ -62,10 +62,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "fslock"
-version = "0.1.6"
+name = "cluFlock"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b14c83e47c73f7d62d907ae24a1a98e9132df3c33eb6c54fcf4bce0dbc41d5af"
+checksum = "dc9a586f6ea37daf0f6154727023de0a52342bb84cf692451f09b2690e1034be"
 dependencies = [
  "libc",
  "winapi",
@@ -281,11 +281,11 @@ checksum = "078775d0255232fb988e6fccf26ddc9d1ac274299aaedcedce21c6f72cc533ce"
 
 [[package]]
 name = "wcounter"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "clap",
- "fslock",
+ "cluFlock",
  "serde",
  "serde_json",
 ]

@@ -8,7 +8,7 @@ use std::fs::OpenOptions;
 use std::io::Read;
 
 #[derive(Clap, Debug)]
-#[clap(version = "0.2.2", author = "tacogips")]
+#[clap(version = "0.2.3", author = "tacogips")]
 struct Opts {
     #[clap(short, long)]
     dest_file: String,

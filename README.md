@@ -1,7 +1,11 @@
+# This repo is DEPRECATED
+I'm using https://github.com/tacogips/path-frecency instead.
+
 ## A simple word counter
 Give the word and count the appearance.
 
 The first rust project of mine.
+
 
 
 ##  Install
